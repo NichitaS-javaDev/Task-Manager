@@ -1,75 +1,145 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TodoItem } from '../../types/todo';
+import { deleteTodo, loadTodos } from '../../utils/xmlStorage';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function TodoListScreen() {
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
-export default function HomeScreen() {
+  useFocusEffect(
+    React.useCallback(() => {
+      loadTodoList();
+    }, [])
+  );
+
+  const loadTodoList = async () => {
+    const loadedTodos = await loadTodos();
+    setTodos(loadedTodos);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteTodo(id);
+    loadTodoList();
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/edit/${id}`);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  const renderItem = ({ item }: { item: TodoItem }) => (
+    <View style={styles.todoItem}>
+      <View style={styles.todoContent}>
+        <Text style={styles.todoText}>{item.title}</Text>
+        {item.dueDate && (
+          <Text style={styles.dueDate}>Due: {formatDate(item.dueDate)}</Text>
+        )}
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity onPress={() => handleEdit(item.id)} style={styles.editButton}>
+          <Ionicons name="pencil" size={24} color="#007AFF" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}>
+          <Ionicons name="trash" size={24} color="#FF3B30" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <FlatList
+        data={todos}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+      />
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => router.push('/create')}
+      >
+        <Ionicons name="add" size={30} color="white" />
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  todoItem: {
+    backgroundColor: 'white',
+    padding: 15,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 10,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  todoContent: {
+    flex: 1,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  todoText: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  dueDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  editButton: {
+    padding: 5,
+  },
+  deleteButton: {
+    padding: 5,
+  },
+  addButton: {
     position: 'absolute',
+    right: 20,
+    bottom: 100,
+    backgroundColor: '#007AFF',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-});
+}); 
